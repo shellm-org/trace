@@ -10,18 +10,30 @@ __trace_get_line() {
   __trace_trim_string "$(tail -n+$2 "$1" | head -n1)"
 }
 
+__trace_eval() {
+  local old_trace_maxlvl=${TRACE_MAXLVL}
+  TRACE_MAXLVL=3
+  __trace_eval_input=("$@")
+  command eval "$@"
+  unset __trace_eval_input
+  TRACE_MAXLVL=${old_trace_maxlvl}
+}
+
 trace() {
   case "$1" in
     --set)
       set -E
-      unset __TRACEBACKS
-      declare -a __TRACEBACKS
-      trap '__trace_code=$?; __trace_command="${BASH_COMMAND}"; trace' ERR
+      # unset __TRACEBACKS
+      # declare -a __TRACEBACKS
+      . "${XDG_CONFIG_DIR:-${HOME}/.config}"/shellm/trace/style
+      eval() { __trace_eval "$@"; }
+      trap '__trace_code=$?; __trace_command=${BASH_COMMAND}; trace' ERR
       return 0
     ;;
     --unset)
       set +E
-      unset __TRACEBACKS
+      # unset __TRACEBACKS
+      unset -f eval
       trap - ERR
       return 0
     ;;
@@ -35,17 +47,17 @@ trace() {
   local prevsrc
   local seen_main
   local seen_source
-
-  # TODO: use dynamic path (XDG CONFIG, etc.)
-  . ~/.config/shellm/traceback_style
+  local max_lvl
 
   prevsrc=""
   record=""
   l=${#BASH_LINENO[@]}
 
-  echo -ne "${tbTitle}Traceback (most recent call last):${tbMain}"
+  echo -ne "${tbTitle}Traceback (most recent call last):${tbReset}"
 
-  for (( i=$l-1; i>=${TRACE_MAXLVL:-2}; i-- )); do
+  (( l == 2 )) && max_lvl=1 || max_lvl=${TRACE_MAXLVL:-2}
+
+  for (( i=l-1; i>=max_lvl; i-- )); do
 
     source="${BASH_SOURCE[i]}"
     func="${FUNCNAME[i]}"
@@ -58,7 +70,7 @@ trace() {
 
     line="$(__trace_get_line "${source}" ${lineno})"
 
-    printf "\n  File \"${tbFile}${source}${tbMain}\", line ${tbLineno}${lineno}${tbMain}, in ${tbFunction}"
+    printf "\n  ${tbMain}File \"${tbFile}${source}${tbMain}\", line ${tbLineno}${lineno}${tbMain}, in ${tbFunction}"
 
     case "${func}" in
       main|source)
@@ -73,38 +85,43 @@ trace() {
     esac
     echo -e "${tbMain}"
 
-    printf "    ${tbLine}%s${tbMain}" "${line}"
+    printf "    ${tbLine}%s${tbReset}" "${line}"
 
   done
 
-  if [ "${line}" != "${__trace_command}" ]; then
+  if [ "${line}" != "${__trace_command}" ] && [ -n "${__trace_command}" ]; then
     if [[ ${__trace_command} =~ $'\n' ]]; then
       printf "\n     "
     fi
-    printf " (${tbCommand}${__trace_command//$'\n'/$'\n'       }${tbMain})"
+    printf " ${tbMain}(${tbCommand}${__trace_command//$'\n'/$'\n'       }${tbMain})${tbReset}"
   fi
 
-  echo -e "\n\n  ${tbCode}Exit/Return code: ${__trace_code}${tbMain}\e[0m"
-  echo -e "\e[0m"
+  if [ -n "${__trace_code}" ]; then
+    printf "\n  ${tbCode}Exit/Return code: ${__trace_code}${tbReset}\n"
+  fi
+  echo
+
+  unset __trace_code
+  unset __trace_command
 }
 
-__trace_record() {
-  __TRACEBACKS+=("$(__trace_get)")
-}
+# __trace_record() {
+#   __TRACEBACKS+=("$(__trace_get)")
+# }
 
-__trace_record_and_print() {
-  local tb="$(__trace_get)"
-  __TRACEBACKS+=("${tb}")
-  echo "${tb}" >&2
-}
+# __trace_record_and_print() {
+#   local tb="$(__trace_get)"
+#   __TRACEBACKS+=("${tb}")
+#   echo "${tb}" >&2
+# }
 
-__trace_print_recorded() {
-  local tb
-  for tb in "${__TRACEBACKS[@]}"; do
-    echo "${tb}"
-    echo
-  done
-}
+# __trace_print_recorded() {
+#   local tb
+#   for tb in "${__TRACEBACKS[@]}"; do
+#     echo "${tb}"
+#     echo
+#   done
+# }
 
 __trace_set() {
   TRACE_MAXLVL=1
