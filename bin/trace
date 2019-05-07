@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+## \brief Show a traceback message when an error occur in your shell script.
+## \usage trace [-h]
+while [ $# -ne 0 ]; do
+  case "$1" in
+    ## \option -h, --help
+    ## Print this help and exit.
+    -h|--help) cat "$(shellm locate "shellm/trace")/msg/help"; exit 0 ;;
+  esac
+  shift
+done
