@@ -14,7 +14,7 @@ __trace_get_line() {
 __trace_eval() {
   local old_trace_maxlvl=${TRACE_MAXLVL}
   TRACE_MAXLVL=3
-  command eval "$@"
+  builtin eval "$@"
   TRACE_MAXLVL=${old_trace_maxlvl}
 }
 
@@ -33,7 +33,7 @@ trace() {
     --unset)
       set +E
       # unset __TRACEBACKS
-      unset -f eval
+      unset -f eval 2>/dev/null
       trap - ERR
       return 0
     ;;
