@@ -24,8 +24,11 @@ trace() {
       set -E
       # unset __TRACEBACKS
       # declare -a __TRACEBACKS
-      # shellcheck disable=SC1090
-      . "${XDG_CONFIG_DIR:-${HOME}/.config}"/shellm/trace/style
+      # Custom styles are optional; unset style variables produce plain text.
+      if [ -f "${XDG_CONFIG_DIR:-${HOME}/.config}"/shellm/trace/style ]; then
+        # shellcheck disable=SC1090
+        . "${XDG_CONFIG_DIR:-${HOME}/.config}"/shellm/trace/style
+      fi
       eval() { __trace_eval "$@"; }
       trap '__trace_code=$?; __trace_command=${BASH_COMMAND}; trace' ERR
       return 0
